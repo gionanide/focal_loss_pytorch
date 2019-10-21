@@ -4,10 +4,11 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 class FocalLoss(nn.Module):
-    def __init__(self, gamma=0, alpha=None, size_average=True):
+    def __init__(self, gamma=0, alpha=None, ignore_index=0, size_average=True):
         super(FocalLoss, self).__init__()
         self.gamma = gamma
         self.alpha = alpha
+        self.ignore_index = ignore_index
         if isinstance(alpha,(float,int,long)): self.alpha = torch.Tensor([alpha,1-alpha])
         if isinstance(alpha,list): self.alpha = torch.Tensor(alpha)
         self.size_average = size_average
@@ -18,6 +19,10 @@ class FocalLoss(nn.Module):
             input = input.transpose(1,2)    # N,C,H*W => N,H*W,C
             input = input.contiguous().view(-1,input.size(2))   # N,H*W,C => N*H*W,C
         target = target.view(-1,1)
+        
+        #before we apply everything we clean the tensors from the ignored index
+        input = input[target[:,0]!=self.ignore_index]
+        target = target[target[:,0]!=self.ignore_index]
 
         logpt = F.log_softmax(input)
         logpt = logpt.gather(1,target)
